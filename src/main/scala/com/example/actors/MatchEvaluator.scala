@@ -7,8 +7,8 @@ import org.apache.commons.math3.distribution.NormalDistribution
 import scala.util.Random
 
 object MatchEvaluator {
-  case class Match(val1: Double, val2: Double)
-  case class MatchResult(goals1: Int, goals2: Int)
+  case class Match(hostValue: Double, awayValue: Double)
+  case class MatchResult(hostGoals: Int, awayGoals: Int)
 }
 
 class MatchEvaluator extends Actor with ActorLogging {
@@ -21,8 +21,8 @@ class MatchEvaluator extends Actor with ActorLogging {
   }
 
   def eval(m: MatchEvaluator.Match): MatchEvaluator.MatchResult = {
-    require(m.val1 > 0, "val1 cannot be negative")
-    require(m.val2 > 0, "val2 cannot be negative")
+    require(m.hostValue > 0, "val1 cannot be negative")
+    require(m.awayValue > 0, "val2 cannot be negative")
 
     log.info("Evaluating result of the following match: {}", m)
 
@@ -39,7 +39,7 @@ class MatchEvaluator extends Actor with ActorLogging {
   }
 
   def calcBalancePoint(m: MatchEvaluator.Match): Double =
-    (log2(m.val1 / m.val2) / 2) + hostPremium
+    (log2(m.hostValue / m.awayValue) / 2) + hostPremium
 
   private def log2(x: Double) = Math.log(x) / Math.log(2)
 
