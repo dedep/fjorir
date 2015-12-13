@@ -5,8 +5,8 @@ import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 import akka.actor.{ActorLogging, Props}
-import akka.persistence.{SnapshotOffer, PersistentActor}
-import com.example.actors.MatchReferee.Match
+import akka.persistence.{RecoveryCompleted, SnapshotOffer, PersistentActor}
+import com.example.actors.MatchReferee.{PersistSnapshot, Match}
 
 import scala.collection.immutable.Queue
 import scala.concurrent.duration._
@@ -14,6 +14,7 @@ import scala.language.postfixOps
 
 object MatchReferee {
   case class Match(id: String, hostId: Int, awayId: Int, playDate: LocalDateTime)
+  object PersistSnapshot
 }
 
 class MatchReferee extends PersistentActor with ActorLogging {
@@ -23,24 +24,33 @@ class MatchReferee extends PersistentActor with ActorLogging {
   implicit val executor = context.system.dispatcher
 
   override def receiveRecover: Receive = {
+    case m: Match =>
+      matchQueue = matchQueue :+ m
+
+    case r: MatchEvaluator.MatchResult =>
+      matchQueue = matchQueue.filterNot(_.id == r.id)
+
     case SnapshotOffer(_, snap: Queue[Match]) =>
-      log.info(s"Restoring state from snapshot $snap")
       matchQueue = snap
+
+    case RecoveryCompleted =>
       matchQueue.foreach(scheduleMatch)
   }
 
   override def receiveCommand: Receive = {
     case m: Match =>
       matchQueue = matchQueue :+ m
-      saveSnapshot(matchQueue)
-      scheduleMatch(m)
+      persist(m)(scheduleMatch)
 
-    case MatchEvaluator.MatchResult(id, _, _) =>
-      matchQueue = matchQueue.filterNot(_.id == id)
+    case r: MatchEvaluator.MatchResult =>
+      matchQueue = matchQueue.filterNot(_.id == r.id)
+      persist(r)(_ => ())
+
+    case PersistSnapshot =>
       saveSnapshot(matchQueue)
   }
 
-  override val persistenceId: String = "sample-id-1"
+  override val persistenceId: String = context.self.path.name
 
   private val scheduleMatch: (Match) => Unit = {
     m: Match =>
@@ -59,5 +69,4 @@ class MatchReferee extends PersistentActor with ActorLogging {
     if (date isBefore now) 0 millis
     else ChronoUnit.MILLIS.between(now, date) millis
   }
-
 }
