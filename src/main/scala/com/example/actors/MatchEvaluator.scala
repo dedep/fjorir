@@ -7,8 +7,8 @@ import org.apache.commons.math3.distribution.NormalDistribution
 import scala.util.Random
 
 object MatchEvaluator {
-  case class Match(hostValue: Double, awayValue: Double)
-  case class MatchResult(hostGoals: Int, awayGoals: Int)
+  case class Match(id: String, hostValue: Double, awayValue: Double)
+  case class MatchResult(id: String, hostGoals: Int, awayGoals: Int)
 }
 
 class MatchEvaluator extends Actor with ActorLogging {
@@ -32,7 +32,7 @@ class MatchEvaluator extends Actor with ActorLogging {
     val mp = drawMatchPoint(bp)
     log.debug("Match point for match: {} equals: {}", m, mp.underlying())
 
-    val result = createResultForMatchPoint(mp)
+    val result = createResultForMatchPoint(mp, m.id)
     log.info("Match: {} result has been evaluated: {}", m, result)
 
     result
@@ -45,16 +45,16 @@ class MatchEvaluator extends Actor with ActorLogging {
 
   def drawMatchPoint(balancePoint: Double): Double = Random.nextGaussian() + balancePoint
 
-  def createResultForMatchPoint(matchPoint: Double): MatchEvaluator.MatchResult = {
+  def createResultForMatchPoint(matchPoint: Double, id: String): MatchEvaluator.MatchResult = {
     val c = drawGoalsConstantComponent
     log.debug("Goals constant equals: {}", c.underlying())
 
     val d = calcGoalsDiff(matchPoint)
     log.debug("Goals difference equals: {}", d.underlying())
 
-    if (d > 0) MatchEvaluator.MatchResult(d + c, c)
-    else if (d < 0) MatchEvaluator.MatchResult(c, c - d)
-    else MatchEvaluator.MatchResult(c, c)
+    if (d > 0) MatchEvaluator.MatchResult(id, d + c, c)
+    else if (d < 0) MatchEvaluator.MatchResult(id, c, c - d)
+    else MatchEvaluator.MatchResult(id, c, c)
   }
 
   def drawGoalsConstantComponent: Int = Math.round(Math.abs(Random.nextGaussian())).toInt
