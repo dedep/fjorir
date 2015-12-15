@@ -9,9 +9,10 @@ import akka.actor.Props
 class HelloWorldActor extends Actor {
 
   override def preStart(): Unit = {
-    val greeter = context.actorOf(Props[MatchReferee], "referee")
-    greeter ! MatchReferee.Match(UUID.randomUUID().toString,
-      1, 2, LocalDateTime.now().plusSeconds(20))
+    val d = context.actorOf(Props[MatchDispatcher], "dispatcher")
+    d ! MatchDispatcher.DispatchMatch(UUID.randomUUID().toString, 100, 200, LocalDateTime.now().plusSeconds(20))
+    d ! MatchDispatcher.DispatchMatch(UUID.randomUUID().toString, 100, 300, LocalDateTime.now().plusSeconds(30))
+    d ! MatchDispatcher.DispatchMatch(UUID.randomUUID().toString, 100, 400, LocalDateTime.now().plusSeconds(50))
   }
 
   def receive = {

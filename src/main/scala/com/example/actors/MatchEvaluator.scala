@@ -24,7 +24,7 @@ class MatchEvaluator extends Actor with ActorLogging {
     require(m.hostValue > 0, "val1 cannot be negative")
     require(m.awayValue > 0, "val2 cannot be negative")
 
-    log.info("Evaluating result of the following match: {}", m)
+    log.debug("Evaluating result of the following match: {}", m)
 
     val bp = calcBalancePoint(m)
     log.debug("Balance point for match: {} equals: {}", m, bp.underlying())
@@ -33,7 +33,7 @@ class MatchEvaluator extends Actor with ActorLogging {
     log.debug("Match point for match: {} equals: {}", m, mp.underlying())
 
     val result = createResultForMatchPoint(mp, m.id)
-    log.info("Match: {} result has been evaluated: {}", m, result)
+    log.debug("Match: {} result has been evaluated: {}", m, result)
 
     result
   }

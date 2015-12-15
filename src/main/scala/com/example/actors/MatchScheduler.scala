@@ -2,22 +2,21 @@ package com.example.actors
 
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
-import java.util.UUID
 
 import akka.actor.{ActorLogging, Props}
 import akka.persistence.{RecoveryCompleted, SnapshotOffer, PersistentActor}
-import com.example.actors.MatchReferee.{PersistSnapshot, Match}
+import com.example.actors.MatchScheduler.{PersistSnapshot, Match}
 
 import scala.collection.immutable.Queue
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-object MatchReferee {
-  case class Match(id: String, hostId: Int, awayId: Int, playDate: LocalDateTime)
+object MatchScheduler {
+  case class Match(id: String, hostValue: Double, awayValue: Double, playDate: LocalDateTime)
   object PersistSnapshot
 }
 
-class MatchReferee extends PersistentActor with ActorLogging {
+class MatchScheduler extends PersistentActor with ActorLogging {
 
   private var matchQueue: Queue[Match] = Queue.empty
 
@@ -44,7 +43,9 @@ class MatchReferee extends PersistentActor with ActorLogging {
 
     case r: MatchEvaluator.MatchResult =>
       matchQueue = matchQueue.filterNot(_.id == r.id)
-      persist(r)(_ => ())
+      persist(r)(r =>
+        context.parent ! MatchDispatcher.MatchFinished(r.id)
+      )
 
     case PersistSnapshot =>
       saveSnapshot(matchQueue)
@@ -54,11 +55,10 @@ class MatchReferee extends PersistentActor with ActorLogging {
 
   private val scheduleMatch: (Match) => Unit = {
     m: Match =>
-      val msg = MatchEvaluator.Match(m.id, 200, 300)
-      val id: String = UUID.randomUUID().toString.replaceAll("-", "")
-      val recipient = context.actorOf(Props[MatchEvaluator], s"match-$id")
+      val msg = MatchEvaluator.Match(m.id, m.hostValue, m.awayValue)
+      val recipient = context.actorOf(Props[MatchEvaluator], s"match-${m.id}")
       val delay = getDelayTo(m.playDate)
-      log.info(s"Scheduling match $msg to actor ${recipient.path} within $delay.")
+      log.debug(s"Scheduling match $msg to actor ${recipient.path} within $delay.")
 
       context.system.scheduler.scheduleOnce(delay, recipient, msg)
   }
